@@ -474,6 +474,16 @@ static void joystick_callback(int joy, int event)
     }
 }
 
+static void touch_callback(GLFWwindow* window, int touch, int action, double x, double y)
+{
+    printf("%08x at %0.3f: Touch %i %s at %0.3f %0.3f\n",
+           counter++,
+           glfwGetTime(),
+           touch,
+           get_action_name(action),
+           x, y);
+}
+
 int main(int argc, char** argv)
 {
     Slot* slots;
@@ -588,6 +598,7 @@ int main(int argc, char** argv)
         glfwSetCharCallback(slots[i].window, char_callback);
         glfwSetCharModsCallback(slots[i].window, char_mods_callback);
         glfwSetDropCallback(slots[i].window, drop_callback);
+        glfwSetTouchCallback(slots[i].window, touch_callback);
 
         glfwMakeContextCurrent(slots[i].window);
         gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);

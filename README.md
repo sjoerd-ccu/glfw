@@ -208,6 +208,7 @@ skills.
  - Peter Knut
  - Christoph Kubisch
  - Eric Larson
+ - Quinten Lansu
  - Robin Leffmann
  - Glenn Lewis
  - Shane Liesegang
