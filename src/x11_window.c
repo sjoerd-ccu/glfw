@@ -1686,6 +1686,19 @@ int _glfwPlatformWindowVisible(_GLFWwindow* window)
     return wa.map_state == IsViewable;
 }
 
+void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
+                                   _GLFWmonitor* monitor,
+                                   int width, int height)
+{
+    if (window->monitor)
+        leaveFullscreenMode(window);
+
+    _glfwInputWindowMonitorChange(window, monitor);
+
+    if (window->monitor)
+        enterFullscreenMode(window);
+}
+
 void _glfwPlatformPollEvents(void)
 {
     int count = XPending(_glfw.x11.display);

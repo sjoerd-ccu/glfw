@@ -1069,6 +1069,12 @@ int _glfwPlatformWindowVisible(_GLFWwindow* window)
     return [window->ns.object isVisible];
 }
 
+void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
+                                   _GLFWmonitor* monitor,
+                                   int width, int height)
+{
+}
+
 void _glfwPlatformPollEvents(void)
 {
     for (;;)

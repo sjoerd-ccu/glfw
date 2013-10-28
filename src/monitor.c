@@ -157,6 +157,11 @@ void _glfwInputMonitorChange(void)
     _glfwFreeMonitors(monitors, monitorCount);
 }
 
+void _glfwInputWindowMonitorChange(_GLFWwindow* window, _GLFWmonitor* monitor)
+{
+    window->monitor = monitor;
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW internal API                      //////
