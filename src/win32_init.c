@@ -68,23 +68,40 @@ static GLboolean initLibraries(void)
         return GL_FALSE;
     }
 
-    _glfw.win32.winmm.joyGetDevCaps = (JOYGETDEVCAPS_T)
-        GetProcAddress(_glfw.win32.winmm.instance, "joyGetDevCapsW");
-    _glfw.win32.winmm.joyGetPos = (JOYGETPOS_T)
-        GetProcAddress(_glfw.win32.winmm.instance, "joyGetPos");
-    _glfw.win32.winmm.joyGetPosEx = (JOYGETPOSEX_T)
-        GetProcAddress(_glfw.win32.winmm.instance, "joyGetPosEx");
     _glfw.win32.winmm.timeGetTime = (TIMEGETTIME_T)
         GetProcAddress(_glfw.win32.winmm.instance, "timeGetTime");
 
-    if (!_glfw.win32.winmm.joyGetDevCaps ||
-        !_glfw.win32.winmm.joyGetPos ||
-        !_glfw.win32.winmm.joyGetPosEx ||
-        !_glfw.win32.winmm.timeGetTime)
+    if (!_glfw.win32.winmm.timeGetTime)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Win32: Failed to load winmm functions");
         return GL_FALSE;
+    }
+
+    {
+        int i;
+        const WCHAR* names[] =
+        {
+            L"xinput1_3.dll",
+            L"xinput1_2.dll",
+            L"xinput1_1.dll",
+            L"xinput9_1_0.dll",
+            NULL
+        };
+
+        for (i = 0;  names[i];  i++)
+        {
+            _glfw.win32.xinput.instance = LoadLibraryW(names[i]);
+            if (_glfw.win32.xinput.instance)
+            {
+                _glfw.win32.xinput.XInputGetCapabilities = (XINPUTGETCAPABILITIES_T)
+                    GetProcAddress(_glfw.win32.xinput.instance, "XInputGetCapabilities");
+                _glfw.win32.xinput.XInputGetState = (XINPUTGETSTATE_T)
+                    GetProcAddress(_glfw.win32.xinput.instance, "XInputGetState");
+
+                break;
+            }
+        }
     }
 
     _glfw.win32.user32.instance = LoadLibraryW(L"user32.dll");
@@ -112,6 +129,9 @@ static void terminateLibraries(void)
 {
     if (_glfw.win32.winmm.instance)
         FreeLibrary(_glfw.win32.winmm.instance);
+
+    if (_glfw.win32.xinput.instance)
+        FreeLibrary(_glfw.win32.xinput.instance);
 
     if (_glfw.win32.user32.instance)
         FreeLibrary(_glfw.win32.user32.instance);

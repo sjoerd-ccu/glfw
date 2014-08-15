@@ -1,5 +1,5 @@
 //========================================================================
-// GLFW 3.1 WinMM - www.glfw.org
+// GLFW 3.1 DirectX and XInput - www.glfw.org
 //------------------------------------------------------------------------
 // Copyright (c) 2006-2014 Camilla Berglund <elmindreda@elmindreda.org>
 //
@@ -24,24 +24,26 @@
 //
 //========================================================================
 
-#ifndef _winmm_joystick_h_
-#define _winmm_joystick_h_
+#ifndef _win32_joystick_h_
+#define _win32_joystick_h_
 
 #define _GLFW_PLATFORM_LIBRARY_JOYSTICK_STATE \
-    _GLFWjoystickWinMM winmm_js[GLFW_JOYSTICK_LAST + 1]
+    _GLFWjoystickWin32 win32_js[GLFW_JOYSTICK_LAST + 1]
 
 
-// WinMM-specific per-joystick data
-//
-typedef struct _GLFWjoystickWinMM
+
+typedef struct _GLFWjoystickWin32
 {
+    GLboolean       present;
     float           axes[6];
-    unsigned char   buttons[36]; // 32 buttons plus one hat
+    int             axisCount;
+    unsigned char   buttons[14];
+    int             buttonCount;
     char*           name;
-} _GLFWjoystickWinMM;
+} _GLFWjoystickWin32;
 
 
 void _glfwInitJoysticks(void);
 void _glfwTerminateJoysticks(void);
 
-#endif // _winmm_joystick_h_
+#endif // _win32_joystick_h_
