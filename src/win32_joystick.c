@@ -1,5 +1,5 @@
 //========================================================================
-// GLFW 3.1 DirectX and XInput - www.glfw.org
+// GLFW 3.1 Win32 - www.glfw.org
 //------------------------------------------------------------------------
 // Copyright (c) 2002-2006 Marcus Geelnard
 // Copyright (c) 2006-2010 Camilla Berglund <elmindreda@elmindreda.org>
@@ -28,6 +28,21 @@
 #include "internal.h"
 
 
+static void targum(const WCHAR* lol)
+{
+    char* name = _glfwCreateUTF8FromWideString(lol);
+    puts(name);
+    free(name);
+}
+
+static BOOL CALLBACK deviceCallback(const DIDEVICEINSTANCEW* ddi, void* ref)
+{
+    targum(ddi->tszProductName);
+    targum(ddi->tszInstanceName);
+    return DIENUM_CONTINUE;
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
@@ -36,22 +51,41 @@
 //
 void _glfwInitJoysticks(void)
 {
-    DWORD i;
-
-    if (!_glfw_XInputGetCapabilities)
-        return;
-
-    for (i = 0;  i < 4;  i++)
+    if (_glfw_DirectInput8Create)
     {
-        XINPUT_CAPABILITIES xic;
+        if (SUCCEEDED(_glfw_DirectInput8Create(GetModuleHandle(NULL),
+                                               DIRECTINPUT_VERSION,
+                                               &IID_IDirectInput8W,
+                                               (void**) &_glfw.win32.dinput8.object,
+                                               NULL)))
+        {
+            IDirectInput_EnumDevices(_glfw.win32.dinput8.object,
+                                     DI8DEVCLASS_GAMECTRL,
+                                     deviceCallback,
+                                     0,
+                                     DIEDFL_ATTACHEDONLY);
+        }
+    }
 
-        if (_glfw_XInputGetCapabilities(i, XINPUT_FLAG_GAMEPAD, &xic) != ERROR_SUCCESS)
-            continue;
+    if (_glfw_XInputGetCapabilities)
+    {
+        DWORD i;
 
-        _glfw.win32_js[i].axisCount = 6;
-        _glfw.win32_js[i].buttonCount = 14;
-        _glfw.win32_js[i].name = strdup("Quux");
-        _glfw.win32_js[i].present = GL_TRUE;
+        for (i = 0;  i < 4;  i++)
+        {
+            XINPUT_CAPABILITIES xic;
+
+            if (_glfw_XInputGetCapabilities(i, XINPUT_FLAG_GAMEPAD, &xic) !=
+                ERROR_SUCCESS)
+            {
+                continue;
+            }
+
+            _glfw.win32_js[i].axisCount = 6;
+            _glfw.win32_js[i].buttonCount = 14;
+            _glfw.win32_js[i].name = strdup("Quux");
+            _glfw.win32_js[i].present = GL_TRUE;
+        }
     }
 }
 

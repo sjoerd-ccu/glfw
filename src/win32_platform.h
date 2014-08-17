@@ -62,8 +62,12 @@
  #define _WIN32_WINNT 0x0501
 #endif
 
+// Aaaaaaaaaaaaaah
+#define INITGUID
+
 #include <windows.h>
 #include <mmsystem.h>
+#include <dinput.h>
 #include <xinput.h>
 #include <dbt.h>
 
@@ -113,6 +117,10 @@ typedef DWORD (WINAPI * XINPUTGETCAPABILITIES_T)(DWORD,DWORD,XINPUT_CAPABILITIES
 typedef DWORD (WINAPI * XINPUTGETSTATE_T)(DWORD,XINPUT_STATE*);
 #define _glfw_XInputGetCapabilities _glfw.win32.xinput.XInputGetCapabilities
 #define _glfw_XInputGetState _glfw.win32.xinput.XInputGetState
+
+// dinput8.dll function pointer typedefs
+typedef HRESULT (WINAPI * DIRECTINPUT8CREATE_T)(HINSTANCE,DWORD,REFIID,LPVOID*,LPUNKNOWN);
+#define _glfw_DirectInput8Create _glfw.win32.dinput8.DirectInput8Create
 
 // user32.dll function pointer typedefs
 typedef BOOL (WINAPI * SETPROCESSDPIAWARE_T)(void);
@@ -187,6 +195,13 @@ typedef struct _GLFWlibraryWin32
         XINPUTGETCAPABILITIES_T XInputGetCapabilities;
         XINPUTGETSTATE_T XInputGetState;
     } xinput;
+
+    // dinput8.dll
+    struct {
+        HINSTANCE       instance;
+        DIRECTINPUT8CREATE_T DirectInput8Create;
+        LPDIRECTINPUT8W object;
+    } dinput8;
 
     // user32.dll
     struct {

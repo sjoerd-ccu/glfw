@@ -104,6 +104,13 @@ static GLboolean initLibraries(void)
         }
     }
 
+    _glfw.win32.dinput8.instance = LoadLibraryW(L"dinput8.dll");
+    if (_glfw.win32.dinput8.instance)
+    {
+        _glfw.win32.dinput8.DirectInput8Create = (DIRECTINPUT8CREATE_T)
+            GetProcAddress(_glfw.win32.dinput8.instance, "DirectInput8Create");
+    }
+
     _glfw.win32.user32.instance = LoadLibraryW(L"user32.dll");
     if (_glfw.win32.user32.instance)
     {
@@ -132,6 +139,9 @@ static void terminateLibraries(void)
 
     if (_glfw.win32.xinput.instance)
         FreeLibrary(_glfw.win32.xinput.instance);
+
+    if (_glfw.win32.dinput8.instance)
+        FreeLibrary(_glfw.win32.dinput8.instance);
 
     if (_glfw.win32.user32.instance)
         FreeLibrary(_glfw.win32.user32.instance);
