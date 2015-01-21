@@ -29,13 +29,17 @@
 //
 //========================================================================
 
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#define NANOVG_GL2_IMPLEMENTATION
+#include <nanovg.h>
+#include <nanovg_gl.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 
 static double cursor_x = 0.0, cursor_y = 0.0;
-static int window_width = 640, window_height = 480;
 static int swap_interval = 1;
 
 static void set_swap_interval(GLFWwindow* window, int interval)
@@ -55,18 +59,6 @@ static void error_callback(int error, const char* description)
     fprintf(stderr, "Error: %s\n", description);
 }
 
-static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    window_width = width;
-    window_height = height;
-
-    glViewport(0, 0, window_width, window_height);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0.f, window_width, 0.f, window_height, 0.f, 1.f);
-}
-
 static void cursor_position_callback(GLFWwindow* window, double x, double y)
 {
     cursor_x = x;
@@ -82,14 +74,17 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 int main(void)
 {
     GLFWwindow* window;
-    int width, height;
+    NVGcontext* nvg;
 
     glfwSetErrorCallback(error_callback);
 
     if (!glfwInit())
         exit(EXIT_FAILURE);
 
-    window = glfwCreateWindow(window_width, window_height, "", NULL, NULL);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+
+    window = glfwCreateWindow(640, 480, "Cursor Inaccuracy Detector", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -97,26 +92,38 @@ int main(void)
     }
 
     glfwSetCursorPosCallback(window, cursor_position_callback);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, key_callback);
 
     glfwMakeContextCurrent(window);
-
-    glfwGetFramebufferSize(window, &width, &height);
-    framebuffer_size_callback(window, width, height);
-
     set_swap_interval(window, swap_interval);
+    gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
+
+    nvg = nvgCreateGL2(0);
+    if (!nvg)
+    {
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
 
     while (!glfwWindowShouldClose(window))
     {
+        int width, height;
+
+        glfwGetFramebufferSize(window, &width, &height);
+        glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glBegin(GL_LINES);
-        glVertex2f(0.f, (GLfloat) (window_height - cursor_y));
-        glVertex2f((GLfloat) window_width, (GLfloat) (window_height - cursor_y));
-        glVertex2f((GLfloat) cursor_x, 0.f);
-        glVertex2f((GLfloat) cursor_x, (GLfloat) window_height);
-        glEnd();
+        nvgBeginFrame(nvg, width, height, 1.f);
+
+        nvgBeginPath(nvg);
+        nvgMoveTo(nvg, 0.f, cursor_y);
+        nvgLineTo(nvg, width, cursor_y);
+        nvgMoveTo(nvg, cursor_x, 0.f);
+        nvgLineTo(nvg, cursor_x, height);
+        nvgStrokeColor(nvg, nvgRGB(255, 255, 255));
+        nvgStroke(nvg);
+
+        nvgEndFrame(nvg);
 
         glfwSwapBuffers(window);
         glfwPollEvents();

@@ -28,7 +28,12 @@
 //
 //========================================================================
 
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#define NANOVG_GL2_IMPLEMENTATION
+#include <nanovg.h>
+#include <nanovg_gl.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,11 +64,6 @@ static void error_callback(int error, const char* description)
     fprintf(stderr, "Error: %s\n", description);
 }
 
-static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-}
-
 static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
@@ -72,42 +72,59 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 
 int main(void)
 {
-    float position;
     unsigned long frame_count = 0;
     double last_time, current_time;
     GLFWwindow* window;
+    NVGcontext* nvg;
 
     glfwSetErrorCallback(error_callback);
 
     if (!glfwInit())
         exit(EXIT_FAILURE);
 
-    window = glfwCreateWindow(640, 480, "", NULL, NULL);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+
+    window = glfwCreateWindow(640, 480, "Tearing detector", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
 
+    glfwSetKeyCallback(window, key_callback);
     glfwMakeContextCurrent(window);
     set_swap_interval(window, 0);
+    gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
+
+    nvg = nvgCreateGL2(0);
+    if (!nvg)
+    {
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
 
     last_time = glfwGetTime();
     frame_rate = 0.0;
 
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetKeyCallback(window, key_callback);
-
-    glMatrixMode(GL_PROJECTION);
-    glOrtho(-1.f, 1.f, -1.f, 1.f, 1.f, -1.f);
-    glMatrixMode(GL_MODELVIEW);
-
     while (!glfwWindowShouldClose(window))
     {
+        float position;
+        int width, height;
+
+        glfwGetFramebufferSize(window, &width, &height);
+        glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        position = cosf((float) glfwGetTime() * 4.f) * 0.75f;
-        glRectf(position - 0.25f, -1.f, position + 0.25f, 1.f);
+        nvgBeginFrame(nvg, width, height, 1.f);
+
+        position = (float) ((cos(glfwGetTime() * 4.0) + 1.0) * 0.75 / 2.0);
+        nvgBeginPath(nvg);
+        nvgRect(nvg, width * position, 0.f, width * 0.25f, height);
+        nvgFillColor(nvg, nvgRGBA(255, 255, 255, 255));
+        nvgFill(nvg);
+
+        nvgEndFrame(nvg);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -123,6 +140,9 @@ int main(void)
             update_window_title(window);
         }
     }
+
+    nvgDeleteGL2(nvg);
+    glfwDestroyWindow(window);
 
     glfwTerminate();
     exit(EXIT_SUCCESS);
