@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+static GLboolean swap_tear;
 static int swap_interval;
 static double frame_rate;
 
@@ -46,8 +47,10 @@ static void update_window_title(GLFWwindow* window)
 {
     char title[256];
 
-    sprintf(title, "Tearing detector (interval %i, %0.1f Hz)",
-            swap_interval, frame_rate);
+    sprintf(title, "Tearing detector (interval %i%s, %0.1f Hz)",
+            swap_interval,
+            (swap_tear && swap_interval < 0) ? " (swap tear)" : "",
+            frame_rate);
 
     glfwSetWindowTitle(window, title);
 }
@@ -66,8 +69,32 @@ static void error_callback(int error, const char* description)
 
 static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
-        set_swap_interval(window, 1 - swap_interval);
+    if (action != GLFW_PRESS)
+        return;
+
+    switch (key)
+    {
+        case GLFW_KEY_UP:
+        {
+            if (swap_interval + 1 > swap_interval)
+                set_swap_interval(window, swap_interval + 1);
+            break;
+        }
+
+        case GLFW_KEY_DOWN:
+        {
+            if (swap_tear)
+            {
+                if (swap_interval - 1 < swap_interval)
+                    set_swap_interval(window, swap_interval - 1);
+            }
+            else
+            {
+                if (swap_interval - 1 >= 0)
+                    set_swap_interval(window, swap_interval - 1);
+            }
+        }
+    }
 }
 
 int main(void)
@@ -94,7 +121,6 @@ int main(void)
 
     glfwSetKeyCallback(window, key_callback);
     glfwMakeContextCurrent(window);
-    set_swap_interval(window, 0);
     gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
 
     nvg = nvgCreateGL2(0);
@@ -104,8 +130,11 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
+    set_swap_interval(window, 0);
     last_time = glfwGetTime();
     frame_rate = 0.0;
+    swap_tear = (glfwExtensionSupported("WGL_EXT_swap_control_tear") ||
+                 glfwExtensionSupported("GLX_EXT_swap_control_tear"));
 
     while (!glfwWindowShouldClose(window))
     {
