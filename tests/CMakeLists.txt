@@ -63,7 +63,7 @@ set_target_properties(threads PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "Threads")
 add_executable(title WIN32 MACOSX_BUNDLE title.c)
 set_target_properties(title PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "Title")
 
-add_executable(windows WIN32 MACOSX_BUNDLE windows.c)
+add_executable(windows WIN32 MACOSX_BUNDLE windows.c ${GETOPT})
 set_target_properties(windows PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "Windows")
 
 target_link_libraries(empty "${CMAKE_THREAD_LIBS_INIT}" "${RT_LIBRARY}")
