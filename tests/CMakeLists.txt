@@ -33,12 +33,12 @@ add_executable(clipboard clipboard.c ${GETOPT})
 add_executable(cursor cursor.c ${NANOVG} ${GLAD})
 add_executable(defaults defaults.c)
 add_executable(events events.c ${GETOPT})
-add_executable(fsaa fsaa.c ${GETOPT} ${NANOVG} ${GLAD})
 add_executable(gamma gamma.c ${GETOPT})
 add_executable(glfwinfo glfwinfo.c ${GETOPT})
 add_executable(iconify iconify.c ${GETOPT})
 add_executable(joysticks joysticks.c ${NANOVG} ${GLAD})
 add_executable(monitors monitors.c ${GETOPT})
+add_executable(msaa msaa.c ${GETOPT} ${NANOVG} ${GLAD})
 add_executable(reopen reopen.c ${NANOVG} ${GLAD})
 
 add_executable(empty WIN32 MACOSX_BUNDLE empty.c ${TINYCTHREAD})
@@ -63,8 +63,8 @@ target_link_libraries(empty "${CMAKE_THREAD_LIBS_INIT}" "${RT_LIBRARY}")
 target_link_libraries(threads "${CMAKE_THREAD_LIBS_INIT}" "${RT_LIBRARY}")
 
 set(WINDOWS_BINARIES empty sharing tearing threads title windows)
-set(CONSOLE_BINARIES clipboard cursor defaults events fsaa gamma glfwinfo
-                     iconify joysticks monitors reopen)
+set(CONSOLE_BINARIES clipboard cursor defaults events gamma glfwinfo iconify
+                     joysticks monitors msaa reopen)
 
 set_target_properties(${WINDOWS_BINARIES} ${CONSOLE_BINARIES} PROPERTIES
                       FOLDER "GLFW3/Tests")
