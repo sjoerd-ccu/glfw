@@ -96,7 +96,7 @@ static void list_modes(GLFWmonitor* monitor)
     printf("Current mode: %s\n", format_mode(mode));
     printf("Virtual position: %i %i\n", x, y);
 
-    dpi = (int) ((float) mode->width * 25.4f / (float) widthMM);
+    dpi = (int) (0.5f + (float) mode->width * 25.4f / (float) widthMM);
     printf("Physical size: %i x %i mm (%i dpi)\n", widthMM, heightMM, dpi);
 
     printf("Modes:\n");
