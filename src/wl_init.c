@@ -37,6 +37,13 @@
 
 #include "xkb_unicode.h"
 
+#ifdef USE_XDG_SHELL
+#include "wayland-xdg-shell-client-protocol.h"
+// XXX
+#define static_assert_x(x, y) typedef char static_assertion_##y[(x) ? 1 : -1]
+static_assert_x(XDG_SHELL_VERSION_CURRENT == 5, generated_protocol_and_implementation_version_are_different);
+#endif
+
 static void pointerHandleEnter(void* data,
                                struct wl_pointer* pointer,
                                uint32_t serial,
@@ -500,11 +507,19 @@ static void registryHandleGlobal(void* data,
         _glfw.wl.shm =
             wl_registry_bind(registry, name, &wl_shm_interface, 1);
     }
+#ifndef USE_XDG_SHELL
     else if (strcmp(interface, "wl_shell") == 0)
     {
         _glfw.wl.shell =
             wl_registry_bind(registry, name, &wl_shell_interface, 1);
     }
+#else
+    else if (strcmp(interface, "xdg_shell") == 0)
+    {
+        _glfw.wl.shell =
+            wl_registry_bind(registry, name, &xdg_shell_interface, 1);
+    }
+#endif
     else if (strcmp(interface, "wl_output") == 0)
     {
         _glfwAddOutput(name, version);

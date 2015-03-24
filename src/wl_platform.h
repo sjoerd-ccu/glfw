@@ -37,6 +37,10 @@
  #error "The Wayland backend depends on EGL platform support"
 #endif
 
+#ifdef USE_XDG_SHELL
+#include "wayland-xdg-shell-client-protocol.h"
+#endif
+
 #include "posix_tls.h"
 #include "posix_time.h"
 #include "linux_joystick.h"
@@ -63,7 +67,11 @@ typedef struct _GLFWwindowWayland
     GLboolean                   visible;
     struct wl_surface*          surface;
     struct wl_egl_window*       native;
+#ifndef USE_XDG_SHELL
     struct wl_shell_surface*    shell_surface;
+#else
+    struct xdg_surface*         xdg_surface;
+#endif
     struct wl_callback*         callback;
     _GLFWcursor*                currentCursor;
 } _GLFWwindowWayland;
@@ -76,7 +84,11 @@ typedef struct _GLFWlibraryWayland
     struct wl_display*          display;
     struct wl_registry*         registry;
     struct wl_compositor*       compositor;
+#ifndef USE_XDG_SHELL
     struct wl_shell*            shell;
+#else
+    struct xdg_shell*           shell;
+#endif
     struct wl_shm*              shm;
     struct wl_seat*             seat;
     struct wl_pointer*          pointer;

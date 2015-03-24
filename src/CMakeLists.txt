@@ -27,10 +27,15 @@ elseif (_GLFW_X11)
     set(glfw_SOURCES ${common_SOURCES} x11_init.c x11_monitor.c x11_window.c
                      xkb_unicode.c linux_joystick.c posix_time.c posix_tls.c)
 elseif (_GLFW_WAYLAND)
+    include(Wayland)
+    WAYLAND_ADD_PROTOCOL_CLIENT(proto-xdg-shell "${GLFW_SOURCE_DIR}/deps/xdg-shell.xml" xdg-shell)
     set(glfw_HEADERS ${common_HEADERS} wl_platform.h linux_joystick.h
-                     posix_time.h posix_tls.h xkb_unicode.h)
+                     posix_time.h posix_tls.h xkb_unicode.h
+                     wayland-xdg-shell-client-protocol.h)
     set(glfw_SOURCES ${common_SOURCES} wl_init.c wl_monitor.c wl_window.c
-                     linux_joystick.c posix_time.c posix_tls.c xkb_unicode.c)
+                     linux_joystick.c posix_time.c posix_tls.c xkb_unicode.c
+                     wayland-xdg-shell-protocol.c)
+    list(APPEND glfw_SOURCES ${proto-xdg-shell})
 elseif (_GLFW_MIR)
     set(glfw_HEADERS ${common_HEADERS} mir_platform.h linux_joystick.h
                      posix_time.h posix_tls.h xkb_unicode.h)

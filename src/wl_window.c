@@ -41,6 +41,7 @@
 #include <wayland-cursor.h>
 
 
+#ifndef USE_XDG_SHELL
 static void handlePing(void* data,
                        struct wl_shell_surface* shellSurface,
                        uint32_t serial)
@@ -71,6 +72,34 @@ static const struct wl_shell_surface_listener shellSurfaceListener = {
     handleConfigure,
     handlePopupDone
 };
+#else
+static void handleConfigure(void* data,
+                            struct xdg_surface* xdgSurface,
+                            int32_t width,
+                            int32_t height,
+                            struct wl_array *states,
+                            uint32_t serial)
+{
+    _GLFWwindow* window = data;
+    _glfwInputFramebufferSize(window, width, height);
+    _glfwInputWindowSize(window, width, height);
+    _glfwPlatformSetWindowSize(window, width, height);
+    _glfwInputWindowDamage(window);
+    xdg_surface_ack_configure(xdgSurface, serial);
+}
+
+static void handleClose(void* data,
+                        struct xdg_surface* xdgSurface)
+{
+    _GLFWwindow* window = data;
+    _glfwInputWindowCloseRequest(window);
+}
+
+static const struct xdg_surface_listener xdgSurfaceListener = {
+    handleConfigure,
+    handleClose
+};
+#endif
 
 static GLboolean createSurface(_GLFWwindow* window,
                                const _GLFWwndconfig* wndconfig)
@@ -87,6 +116,7 @@ static GLboolean createSurface(_GLFWwindow* window,
     if (!window->wl.native)
         return GL_FALSE;
 
+#ifndef USE_XDG_SHELL
     window->wl.shell_surface = wl_shell_get_shell_surface(_glfw.wl.shell,
                                                           window->wl.surface);
     if (!window->wl.shell_surface)
@@ -95,6 +125,16 @@ static GLboolean createSurface(_GLFWwindow* window,
     wl_shell_surface_add_listener(window->wl.shell_surface,
                                   &shellSurfaceListener,
                                   window);
+#else
+    window->wl.xdg_surface = xdg_shell_get_xdg_surface(_glfw.wl.shell,
+                                                       window->wl.surface);
+    if (!window->wl.xdg_surface)
+        return GL_FALSE;
+
+    xdg_surface_add_listener(window->wl.xdg_surface,
+                             &xdgSurfaceListener,
+                             window);
+#endif
 
     window->wl.width = wndconfig->width;
     window->wl.height = wndconfig->height;
@@ -222,6 +262,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     if (!createSurface(window, wndconfig))
         return GL_FALSE;
 
+#ifndef USE_XDG_SHELL
     if (wndconfig->monitor)
     {
         wl_shell_surface_set_fullscreen(
@@ -234,6 +275,14 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     {
         wl_shell_surface_set_toplevel(window->wl.shell_surface);
     }
+#else
+    if (wndconfig->monitor)
+    {
+        xdg_surface_set_fullscreen(
+            window->wl.xdg_surface,
+            wndconfig->monitor->wl.output);
+    }
+#endif
 
     window->wl.currentCursor = NULL;
 
@@ -258,8 +307,13 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->wl.native)
         wl_egl_window_destroy(window->wl.native);
 
+#ifndef USE_XDG_SHELL
     if (window->wl.shell_surface)
         wl_shell_surface_destroy(window->wl.shell_surface);
+#else
+    if (window->wl.xdg_surface)
+        xdg_surface_destroy(window->wl.xdg_surface);
+#endif
 
     if (window->wl.surface)
         wl_surface_destroy(window->wl.surface);
@@ -267,7 +321,11 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 
 void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
 {
+#ifndef USE_XDG_SHELL
     wl_shell_surface_set_title(window->wl.shell_surface, title);
+#else
+    xdg_surface_set_title(window->wl.xdg_surface, title);
+#endif
 }
 
 void _glfwPlatformGetWindowPos(_GLFWwindow* window, int* xpos, int* ypos)
@@ -317,8 +375,12 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
 {
+#ifdef USE_XDG_SHELL
     // TODO
     fprintf(stderr, "_glfwPlatformIconifyWindow not implemented yet\n");
+#else
+    xdg_surface_set_minimized(window->wl.xdg_surface);
+#endif
 }
 
 void _glfwPlatformRestoreWindow(_GLFWwindow* window)
@@ -329,7 +391,12 @@ void _glfwPlatformRestoreWindow(_GLFWwindow* window)
 
 void _glfwPlatformShowWindow(_GLFWwindow* window)
 {
+#ifndef USE_XDG_SHELL
     wl_shell_surface_set_toplevel(window->wl.shell_surface);
+#else
+    // TODO
+    fprintf(stderr, "_glfwPlatformShowWindow not implemented yet\n");
+#endif
 }
 
 void _glfwPlatformUnhideWindow(_GLFWwindow* window)

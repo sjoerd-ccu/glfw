@@ -41,6 +41,7 @@ endif()
 
 if (UNIX AND NOT APPLE)
     option(GLFW_USE_WAYLAND "Use Wayland for context creation (implies EGL as well)" OFF)
+    option(GLFW_USE_XDG_SHELL "On Wayland, use xdg-shell instead of wl-shell" ON)
     option(GLFW_USE_MIR     "Use Mir for context creation (implies EGL as well)" OFF)
 endif()
 
@@ -355,6 +356,8 @@ if (_GLFW_WAYLAND)
         list(APPEND glfw_LIBRARIES "${MATH_LIBRARY}")
         list(APPEND glfw_PKG_LIBS "-lm")
     endif()
+
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_XDG_SHELL")
 endif()
 
 #--------------------------------------------------------------------
