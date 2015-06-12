@@ -106,6 +106,15 @@ typedef struct _GLFWwindowWayland
 } _GLFWwindowWayland;
 
 
+// Wayland-specific per-touchpoint data
+//
+typedef struct _GLFWtouchpointWayland
+{
+    int                         id;
+    _GLFWwindow*                focus;
+} _GLFWtouchpointWayland;
+
+
 // Wayland-specific global data
 //
 typedef struct _GLFWlibraryWayland
@@ -118,6 +127,7 @@ typedef struct _GLFWlibraryWayland
     struct wl_seat*             seat;
     struct wl_pointer*          pointer;
     struct wl_keyboard*         keyboard;
+    struct wl_touch*            touch;
     struct zwp_relative_pointer_manager_v1* relativePointerManager;
     struct zwp_pointer_constraints_v1*      pointerConstraints;
 
@@ -146,6 +156,10 @@ typedef struct _GLFWlibraryWayland
 
     _GLFWwindow*                pointerFocus;
     _GLFWwindow*                keyboardFocus;
+
+    _GLFWtouchpointWayland*     touchpoints;
+    int                         touchpointsSize;
+    GLFWbool                    touchEnabled;
 
 } _GLFWlibraryWayland;
 
