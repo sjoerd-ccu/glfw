@@ -39,6 +39,7 @@ endif()
 
 if (UNIX AND NOT APPLE)
     option(GLFW_USE_WAYLAND "Use Wayland for context creation (implies EGL as well)" OFF)
+    option(GLFW_USE_DRM     "Use DRM for context creation (implies EGL as well)" OFF)
     option(GLFW_USE_MIR     "Use Mir for context creation (implies EGL as well)" OFF)
 endif()
 
@@ -51,6 +52,8 @@ if (BUILD_SHARED_LIBS)
 endif()
 
 if (GLFW_USE_WAYLAND)
+    set(GLFW_USE_EGL ON)
+elseif (GLFW_USE_DRM)
     set(GLFW_USE_EGL ON)
 elseif (GLFW_USE_MIR)
     set(GLFW_USE_EGL ON)
@@ -156,6 +159,9 @@ elseif (UNIX)
     if (GLFW_USE_WAYLAND)
         set(_GLFW_WAYLAND 1)
         message(STATUS "Using Wayland for window creation")
+    elseif (GLFW_USE_DRM)
+        set(_GLFW_DRM 1)
+        message(STATUS "Using DRM for window creation")
     elseif (GLFW_USE_MIR)
         set(_GLFW_MIR 1)
         message(STATUS "Using Mir for window creation")
@@ -304,6 +310,26 @@ if (_GLFW_WAYLAND)
     list(APPEND glfw_PKG_DEPS "xkbcommon")
     list(APPEND glfw_INCLUDE_DIRS "${XKBCOMMON_INCLUDE_DIRS}")
     list(APPEND glfw_LIBRARIES "${XKBCOMMON_LIBRARY}")
+endif()
+
+#--------------------------------------------------------------------
+# Use DRM for window creation
+#--------------------------------------------------------------------
+if (_GLFW_DRM)
+    #find_package(DRM REQUIRED)
+    #list(APPEND glfw_PKG_DEPS "libdrm")
+    #list(APPEND glfw_INCLUDE_DIRS "${DRM_INCLUDE_DIRS}")
+    #list(APPEND glfw_LIBRARIES "${DRM_LIBRARIES}" "${CMAKE_THREAD_LIBS_INIT}")
+
+    find_package(GBM REQUIRED)
+    list(APPEND glfw_PKG_DEPS "gbm")
+    list(APPEND glfw_INCLUDE_DIRS "${GBM_INCLUDE_DIRS}")
+    list(APPEND glfw_LIBRARIES "${GBM_LIBRARIES}")
+
+    #find_package(XKBCommon REQUIRED)
+    #list(APPEND glfw_PKG_DEPS "xkbcommon")
+    #list(APPEND glfw_INCLUDE_DIRS "${XKBCOMMON_INCLUDE_DIRS}")
+    #list(APPEND glfw_LIBRARIES "${XKBCOMMON_LIBRARY}")
 endif()
 
 #--------------------------------------------------------------------

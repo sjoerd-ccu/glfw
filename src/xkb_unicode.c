@@ -826,6 +826,7 @@ static const struct codepair {
   { 0x13bd, 0x0153 },
   { 0x13be, 0x0178 },
   { 0x20ac, 0x20ac },
+#if 0
   // Numeric keypad with numlock on
   { XK_KP_Space, ' ' },
   { XK_KP_Equal, '=' },
@@ -845,6 +846,7 @@ static const struct codepair {
   { XK_KP_7, 0x0037 },
   { XK_KP_8, 0x0038 },
   { XK_KP_9, 0x0039 }
+#endif
 };
 
 

@@ -95,6 +95,8 @@ typedef int GLFWbool;
  #include "x11_platform.h"
 #elif defined(_GLFW_WAYLAND)
  #include "wl_platform.h"
+#elif defined(_GLFW_DRM)
+ #include "drm_platform.h"
 #elif defined(_GLFW_MIR)
  #include "mir_platform.h"
 #else
