@@ -523,6 +523,37 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN:
         case WM_XBUTTONDOWN:
+        {
+            const int mods = getKeyMods();
+
+            if (window->touchInput)
+            {
+                // Skip emulated button events when touch input is enabled
+                if ((GetMessageExtraInfo() & 0xffffff00) == 0xff515700)
+                    break;
+            }
+
+            SetCapture(hWnd);
+
+            if (uMsg == WM_LBUTTONDOWN)
+                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, mods);
+            else if (uMsg == WM_RBUTTONDOWN)
+                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, mods);
+            else if (uMsg == WM_MBUTTONDOWN)
+                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, mods);
+            else
+            {
+                if (HIWORD(wParam) == XBUTTON1)
+                    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_4, GLFW_PRESS, mods);
+                else if (HIWORD(wParam) == XBUTTON2)
+                    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_5, GLFW_PRESS, mods);
+
+                return TRUE;
+            }
+
+            return 0;
+        }
+
         case WM_LBUTTONUP:
         case WM_RBUTTONUP:
         case WM_MBUTTONUP:
@@ -540,6 +571,15 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
                 button = GLFW_MOUSE_BUTTON_4;
             else
                 button = GLFW_MOUSE_BUTTON_5;
+
+            if (window->touchInput)
+            {
+                // Skip emulated button events when touch input is enabled
+                if ((GetMessageExtraInfo() & 0xffffff00) == 0xff515700)
+                    break;
+            }
+
+            ReleaseCapture();
 
             if (uMsg == WM_LBUTTONDOWN || uMsg == WM_RBUTTONDOWN ||
                 uMsg == WM_MBUTTONDOWN || uMsg == WM_XBUTTONDOWN)
@@ -594,7 +634,9 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
                 _glfwInputCursorEnter(window, GLFW_TRUE);
             }
 
-            return 0;
+            // NOTE: WM_MOUSEMOVE messages must be passed on to DefWindowProc
+            //       for WM_TOUCH messages to be emitted
+            break;
         }
 
         case WM_MOUSELEAVE:
