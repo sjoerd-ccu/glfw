@@ -376,9 +376,9 @@ void _glfwPlatformSetCursorPos(_GLFWwindow* window, double x, double y)
                     "DRM: Cursor position setting not supported");
 }
 
-void _glfwPlatformApplyCursorMode(_GLFWwindow* window)
+void _glfwPlatformSetCursorMode(_GLFWwindow* window, int mode)
 {
-    //_glfwPlatformSetCursor(window, window->drm.currentCursor);
+    //_glfwPlatformSetCursor(window, window->wl.currentCursor);
 }
 
 int _glfwPlatformCreateCursor(_GLFWcursor* cursor,

@@ -36,6 +36,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <gbm.h>
+#include <errno.h>
+#include <xf86drm.h>
+#include <xf86drmMode.h>
 
 
 #if 0
@@ -445,6 +448,36 @@ static void keyboardHandleModifiers(void* data,
 }
 #endif
 
+#ifndef USE_RENDER_NODES
+static int initDrm(void) {
+    drmModeRes* resources;
+    drmModeConnector* connector = NULL;
+    int i;
+
+    resources = drmModeGetResources(_glfw.drm.modeset_fd);
+    if (!resources)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "DRM: Failed to get modeset resources: %s",
+                        strerror(errno));
+        return GLFW_FALSE;
+    }
+
+    /* find a connected connector: */
+    for (i = 0; i < resources->count_connectors; i++)
+    {
+        connector = drmModeGetConnector(_glfw.drm.modeset_fd, resources->connectors[i]);
+        if (connector->connection == DRM_MODE_CONNECTED)
+            _glfwAddOutput(resources, connector);
+        drmModeFreeConnector(connector);
+    }
+
+    drmModeFreeResources(resources);
+
+    return GLFW_TRUE;
+}
+#endif
+
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
@@ -453,10 +486,10 @@ static void keyboardHandleModifiers(void* data,
 int _glfwPlatformInit(void)
 {
     _glfw.drm.fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC);
-    if (_glfw.drm.fd < 0)
+    if (_glfw.drm.fd == -1)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "DRM: Failed to open render node");
+                        "DRM: Failed to open render node: %s", strerror(errno));
         return GLFW_FALSE;
     }
 
@@ -468,8 +501,27 @@ int _glfwPlatformInit(void)
         return GLFW_FALSE;
     }
 
+#ifdef USE_RENDER_NODES
+    /* We will expose only one virtual monitor here. */
+    _glfw.drm.monitors = calloc(1, sizeof(_GLFWmonitor*));
+    _glfw.drm.monitorsSize = 1;
+#else
+    _glfw.drm.modeset_fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
+    if (_glfw.drm.modeset_fd == -1)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "DRM: Failed to open card node: %s", strerror(errno));
+        return GLFW_FALSE;
+    }
+
     _glfw.drm.monitors = calloc(4, sizeof(_GLFWmonitor*));
     _glfw.drm.monitorsSize = 4;
+
+    if (!initDrm())
+    {
+        return GLFW_FALSE;
+    }
+#endif
 
 #if 0
     _glfw.wl.xkb.context = xkb_context_new(0);
@@ -528,6 +580,11 @@ void _glfwPlatformTerminate(void)
 const char* _glfwPlatformGetVersionString(void)
 {
     return _GLFW_VERSION_NUMBER " DRM EGL"
+#if defined(USE_RENDER_NODES)
+        " render-nodes"
+#else
+        " KMS"
+#endif
 #if defined(_POSIX_TIMERS) && defined(_POSIX_MONOTONIC_CLOCK)
         " clock_gettime"
 #else

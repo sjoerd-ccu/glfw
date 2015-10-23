@@ -26,19 +26,18 @@
 
 #include "internal.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
-
-#if 0
-struct _GLFWvidmodeDRM
-{
-    GLFWvidmode         base;
-    uint32_t            flags;
+struct _GLFWvidmodeDRM; {
+    GLFWvidmode     base;
+    uint32_t        flags;
 };
 
+#if 0
 static void geometry(void* data,
                      struct wl_output* output,
                      int32_t x,
@@ -108,59 +107,199 @@ static const struct wl_output_listener output_listener = {
 };
 #endif
 
+struct drm_edid {
+    char eisa_id[13];
+    char monitor_name[13];
+    char pnp_id[5];
+    char serial_number[13];
+};
+
+static void
+edid_parse_string(const uint8_t *data, char text[])
+{
+    int i;
+    int replaced = 0;
+
+    /* this is always 12 bytes, but we can't guarantee it's null
+     * terminated or not junk. */
+    strncpy(text, (const char *) data, 12);
+
+    /* remove insane chars */
+    for (i = 0; text[i] != '\0'; i++)
+    {
+        if (text[i] == '\n' || text[i] == '\r')
+        {
+            text[i] = '\0';
+            break;
+        }
+    }
+
+    /* ensure string is printable */
+    for (i = 0; text[i] != '\0'; i++)
+    {
+        if (!isprint(text[i]))
+        {
+            text[i] = '-';
+            replaced++;
+        }
+    }
+
+    /* if the string is random junk, ignore the string */
+    if (replaced > 4)
+        text[0] = '\0';
+}
+
+#define EDID_DESCRIPTOR_ALPHANUMERIC_DATA_STRING        0xfe
+#define EDID_DESCRIPTOR_DISPLAY_PRODUCT_NAME            0xfc
+#define EDID_DESCRIPTOR_DISPLAY_PRODUCT_SERIAL_NUMBER   0xff
+#define EDID_OFFSET_DATA_BLOCKS                         0x36
+#define EDID_OFFSET_LAST_BLOCK                          0x6c
+#define EDID_OFFSET_PNPID                               0x08
+#define EDID_OFFSET_SERIAL                              0x0c
+
+static int
+edid_parse(struct drm_edid *edid, const uint8_t *data, size_t length)
+{
+    int i;
+    uint32_t serial_number;
+
+    /* check header */
+    if (length < 128)
+        return -1;
+    if (data[0] != 0x00 || data[1] != 0xff)
+        return -1;
+
+    /* decode the PNP ID from three 5 bit words packed into 2 bytes
+     * /--08--\/--09--\
+     * 7654321076543210
+     * |\---/\---/\---/
+     * R  C1   C2   C3 */
+    edid->pnp_id[0] = 'A' + ((data[EDID_OFFSET_PNPID + 0] & 0x7c) / 4) - 1;
+    edid->pnp_id[1] = 'A' + ((data[EDID_OFFSET_PNPID + 0] & 0x3) * 8) + ((data[EDID_OFFSET_PNPID + 1] & 0xe0) / 32) - 1;
+    edid->pnp_id[2] = 'A' + (data[EDID_OFFSET_PNPID + 1] & 0x1f) - 1;
+    edid->pnp_id[3] = '\0';
+
+    /* maybe there isn't a ASCII serial number descriptor, so use this instead */
+    serial_number = (uint32_t) data[EDID_OFFSET_SERIAL + 0];
+    serial_number += (uint32_t) data[EDID_OFFSET_SERIAL + 1] * 0x100;
+    serial_number += (uint32_t) data[EDID_OFFSET_SERIAL + 2] * 0x10000;
+    serial_number += (uint32_t) data[EDID_OFFSET_SERIAL + 3] * 0x1000000;
+    if (serial_number > 0)
+        sprintf(edid->serial_number, "%lu", (unsigned long) serial_number);
+
+    /* parse EDID data */
+    for (i = EDID_OFFSET_DATA_BLOCKS;
+         i <= EDID_OFFSET_LAST_BLOCK;
+         i += 18)
+    {
+        /* ignore pixel clock data */
+        if (data[i] != 0)
+            continue;
+        if (data[i+2] != 0)
+            continue;
+
+        /* any useful blocks? */
+        if (data[i+3] == EDID_DESCRIPTOR_DISPLAY_PRODUCT_NAME)
+            edid_parse_string(&data[i+5], edid->monitor_name);
+        else if (data[i+3] == EDID_DESCRIPTOR_DISPLAY_PRODUCT_SERIAL_NUMBER)
+            edid_parse_string(&data[i+5], edid->serial_number);
+        else if (data[i+3] == EDID_DESCRIPTOR_ALPHANUMERIC_DATA_STRING)
+            edid_parse_string(&data[i+5], edid->eisa_id);
+    }
+    return 0;
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwAddOutput(uint32_t name, uint32_t version)
+void _glfwAddOutput(drmModeRes *resources, drmModeConnector *connector)
 {
+    _GLFWmonitor* monitor;
+    char *name;
+    drmModeEncoder* encoder = NULL;
+    drmModeModeInfo* selected_mode = NULL;
+    int i, ret;
+
+    for (i = 0; i < connector->count_props; ++i)
+    {
+        drmModePropertyRes* property = drmModeGetProperty(_glfw.drm.modeset_fd, connector->props[i]);
+        if (!strcmp(property->name, "EDID"))
+        {
+            drmModePropertyBlobRes* edid_blob = drmModeGetPropertyBlob(_glfw.drm.modeset_fd, connector->prop_values[i]);
+            struct drm_edid edid;
+            ret = edid_parse(&edid, edid_blob->data, edid_blob->length);
+            if (!ret)
+            {
+                /* XXX: Use the other values as well? */
+                name = strdup(edid.monitor_name);
+            }
+            drmModeFreePropertyBlob(edid_blob);
+        }
+        printf("property: %s %lu\n", property->name, connector->prop_values[i]);
+        drmModeFreeProperty(property);
+    }
+
+    monitor = _glfwAllocMonitor(name, 0, 0);
+
 #if 0
-    _GLFWmonitor *monitor;
-    struct wl_output *output;
-    char name_str[80];
-
-    memset(name_str, 0, 80 * sizeof(char));
-    snprintf(name_str, 79, "wl_output@%u", name);
-
-    if (version < 2)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "DRM: Unsupported output interface version");
-        return;
-    }
-
-    monitor = _glfwAllocMonitor(name_str, 0, 0);
-
-    output = wl_registry_bind(_glfw.wl.registry,
-                              name,
-                              &wl_output_interface,
-                              2);
-    if (!output)
-    {
-        _glfwFreeMonitor(monitor);
-        return;
-    }
-
     monitor->drm.modes = calloc(4, sizeof(_GLFWvidmodeDRM));
     monitor->drm.modesSize = 4;
 
     monitor->drm.output = output;
     wl_output_add_listener(output, &output_listener, monitor);
+#endif
 
-    if (_glfw.wl.monitorsCount + 1 >= _glfw.wl.monitorsSize)
+    /* find highest resolution mode: */
+    for (i = 0; i < connector->count_modes; i++)
     {
-        _GLFWmonitor** monitors = _glfw.wl.monitors;
-        int size = _glfw.wl.monitorsSize * 2;
+        drmModeModeInfo* mode = &connector->modes[i];
+        if (mode->type & DRM_MODE_TYPE_PREFERRED)
+        {
+            selected_mode = mode;
+            break;
+        }
+    }
+
+    if (!selected_mode)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "DRM: No preferred mode");
+        return;
+    }
+
+    printf("%d: %d×%d (0x%x, 0x%x)\n", i, selected_mode->hdisplay, selected_mode->vdisplay, selected_mode->flags, selected_mode->type);
+
+    /* find encoder: */
+    for (i = 0; i < resources->count_encoders; i++) {
+        encoder = drmModeGetEncoder(_glfw.drm.modeset_fd, resources->encoders[i]);
+        printf("%d %d\n", encoder->encoder_id, connector->encoder_id);
+        if (encoder->encoder_id == connector->encoder_id)
+            break;
+        drmModeFreeEncoder(encoder);
+        encoder = NULL;
+    }
+
+    if (!encoder) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "DRM: No encoder");
+        return;
+    }
+
+    _glfw.drm.crtc_id = encoder->crtc_id;
+    _glfw.drm.connector_id = connector->connector_id;
+
+    if (_glfw.drm.monitorsCount + 1 >= _glfw.drm.monitorsSize)
+    {
+        _GLFWmonitor** monitors = _glfw.drm.monitors;
+        int size = _glfw.drm.monitorsSize * 2;
 
         monitors = realloc(monitors, size * sizeof(_GLFWmonitor*));
 
-        _glfw.wl.monitors = monitors;
-        _glfw.wl.monitorsSize = size;
+        _glfw.drm.monitors = monitors;
+        _glfw.drm.monitorsSize = size;
     }
 
-    _glfw.wl.monitors[_glfw.wl.monitorsCount++] = monitor;
-#endif
+    _glfw.drm.monitors[_glfw.drm.monitorsCount++] = monitor;
 }
 
 

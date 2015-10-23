@@ -27,6 +27,8 @@
 #ifndef _glfw3_drm_platform_h_
 #define _glfw3_drm_platform_h_
 
+#include <xf86drm.h>
+#include <xf86drmMode.h>
 #include <gbm.h>
 //#include <xkbcommon/xkbcommon.h>
 
@@ -75,6 +77,13 @@ typedef struct _GLFWlibraryDRM
     struct gbm_device*          gbm_device;
     uint32_t                    pointerSerial;
 
+#ifndef USE_RENDER_NODES
+    int                         modeset_fd;
+    drmModeModeInfo*            mode;
+    uint32_t                    crtc_id;
+    uint32_t                    connector_id;
+#endif
+
     _GLFWmonitor**              monitors;
     int                         monitorsCount;
     int                         monitorsSize;
@@ -102,8 +111,8 @@ typedef struct _GLFWlibraryDRM
 //
 typedef struct _GLFWmonitorDRM
 {
-#if 0
-    struct wl_output*       output;
+#ifndef USE_RENDER_NODES
+    drmModeModeInfo*        mode;
 #endif
 
     _GLFWvidmodeDRM*        modes;
@@ -128,7 +137,7 @@ typedef struct _GLFWcursorDRM
     int                         xhot, yhot;
 } _GLFWcursorDRM;
 
+void _glfwAddOutput(drmModeRes *resources, drmModeConnector *connector);
 
-void _glfwAddOutput(uint32_t name, uint32_t version);
 
 #endif // _glfw3_drm_platform_h_

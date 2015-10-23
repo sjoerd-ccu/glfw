@@ -316,10 +316,10 @@ endif()
 # Use DRM for window creation
 #--------------------------------------------------------------------
 if (_GLFW_DRM)
-    #find_package(DRM REQUIRED)
-    #list(APPEND glfw_PKG_DEPS "libdrm")
-    #list(APPEND glfw_INCLUDE_DIRS "${DRM_INCLUDE_DIRS}")
-    #list(APPEND glfw_LIBRARIES "${DRM_LIBRARIES}" "${CMAKE_THREAD_LIBS_INIT}")
+    find_package(DRM REQUIRED)
+    list(APPEND glfw_PKG_DEPS "libdrm")
+    list(APPEND glfw_INCLUDE_DIRS "${DRM_INCLUDE_DIRS}")
+    list(APPEND glfw_LIBRARIES "${DRM_LIBRARIES}" "${CMAKE_THREAD_LIBS_INIT}")
 
     find_package(GBM REQUIRED)
     list(APPEND glfw_PKG_DEPS "gbm")
