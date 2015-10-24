@@ -111,17 +111,10 @@ typedef struct _GLFWlibraryDRM
 //
 typedef struct _GLFWmonitorDRM
 {
-#ifndef USE_RENDER_NODES
-    drmModeModeInfo*        mode;
-#endif
-
     _GLFWvidmodeDRM*        modes;
     int                     modesCount;
     int                     modesSize;
-    GLFWbool                done;
-
-    int                     x;
-    int                     y;
+    _GLFWvidmodeDRM*        current_mode;
 
 } _GLFWmonitorDRM;
 

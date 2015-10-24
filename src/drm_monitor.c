@@ -32,7 +32,7 @@
 #include <string.h>
 #include <errno.h>
 
-struct _GLFWvidmodeDRM; {
+struct _GLFWvidmodeDRM {
     GLFWvidmode     base;
     uint32_t        flags;
 };
@@ -84,27 +84,6 @@ static void mode(void* data,
 
     monitor->drm.modes[monitor->drm.modesCount++] = mode;
 }
-
-static void done(void* data,
-                 struct wl_output* output)
-{
-    struct _GLFWmonitor *monitor = data;
-
-    monitor->drm.done = GLFW_TRUE;
-}
-
-static void scale(void* data,
-                  struct wl_output* output,
-                  int32_t factor)
-{
-}
-
-static const struct wl_output_listener output_listener = {
-    geometry,
-    mode,
-    done,
-    scale,
-};
 #endif
 
 struct drm_edid {
@@ -219,7 +198,6 @@ void _glfwAddOutput(drmModeRes *resources, drmModeConnector *connector)
     _GLFWmonitor* monitor;
     char *name;
     drmModeEncoder* encoder = NULL;
-    drmModeModeInfo* selected_mode = NULL;
     int i, ret;
 
     for (i = 0; i < connector->count_props; ++i)
@@ -233,7 +211,8 @@ void _glfwAddOutput(drmModeRes *resources, drmModeConnector *connector)
             if (!ret)
             {
                 /* XXX: Use the other values as well? */
-                name = strdup(edid.monitor_name);
+                name = strdup(edid.pnp_id);
+                //name = strdup(edid.monitor_name);
             }
             drmModeFreePropertyBlob(edid_blob);
         }
@@ -243,32 +222,33 @@ void _glfwAddOutput(drmModeRes *resources, drmModeConnector *connector)
 
     monitor = _glfwAllocMonitor(name, 0, 0);
 
-#if 0
-    monitor->drm.modes = calloc(4, sizeof(_GLFWvidmodeDRM));
-    monitor->drm.modesSize = 4;
+    monitor->widthMM = connector->mmWidth;
+    monitor->heightMM = connector->mmHeight;
 
-    monitor->drm.output = output;
-    wl_output_add_listener(output, &output_listener, monitor);
-#endif
+    monitor->drm.modes = calloc(connector->count_modes, sizeof(_GLFWvidmodeDRM));
+    monitor->drm.modesSize = connector->count_modes;
+    monitor->drm.modesCount = connector->count_modes;
 
     /* find highest resolution mode: */
     for (i = 0; i < connector->count_modes; i++)
     {
         drmModeModeInfo* mode = &connector->modes[i];
+        monitor->drm.modes[i].base.width = mode->hdisplay;
+        monitor->drm.modes[i].base.height = mode->vdisplay;
+        monitor->drm.modes[i].base.refreshRate = mode->vrefresh;
+        monitor->drm.modes[i].flags = mode->flags;
+
+        /* TODO: Should we retrieve that information from the EDID? */
+        monitor->drm.modes[i].base.redBits = 8;
+        monitor->drm.modes[i].base.greenBits = 8;
+        monitor->drm.modes[i].base.blueBits = 8;
+
+        printf("%d: %d×%d : %d (0x%x, 0x%x)\n", i, mode->hdisplay, mode->vdisplay, mode->vrefresh, mode->flags, mode->type);
+
+        /* TODO: we should probably retrieve the current mode instead. */
         if (mode->type & DRM_MODE_TYPE_PREFERRED)
-        {
-            selected_mode = mode;
-            break;
-        }
+            monitor->drm.current_mode = &monitor->drm.modes[i];
     }
-
-    if (!selected_mode)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "DRM: No preferred mode");
-        return;
-    }
-
-    printf("%d: %d×%d (0x%x, 0x%x)\n", i, selected_mode->hdisplay, selected_mode->vdisplay, selected_mode->flags, selected_mode->type);
 
     /* find encoder: */
     for (i = 0; i < resources->count_encoders; i++) {
@@ -280,13 +260,13 @@ void _glfwAddOutput(drmModeRes *resources, drmModeConnector *connector)
         encoder = NULL;
     }
 
-    if (!encoder) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "DRM: No encoder");
-        return;
-    }
+    //if (!encoder) {
+    //    _glfwInputError(GLFW_PLATFORM_ERROR, "DRM: No encoder");
+    //    return;
+    //}
 
-    _glfw.drm.crtc_id = encoder->crtc_id;
-    _glfw.drm.connector_id = connector->connector_id;
+    //_glfw.drm.crtc_id = encoder->crtc_id;
+    //_glfw.drm.connector_id = connector->connector_id;
 
     if (_glfw.drm.monitorsCount + 1 >= _glfw.drm.monitorsSize)
     {
@@ -346,15 +326,15 @@ GLFWbool _glfwPlatformIsSameMonitor(_GLFWmonitor* first, _GLFWmonitor* second)
 
 void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos)
 {
+    /* Monitors don’t have a relative position on DRM. */
     if (xpos)
-        *xpos = monitor->drm.x;
+        *xpos = 0;
     if (ypos)
-        *ypos = monitor->drm.y;
+        *ypos = 0;
 }
 
 GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* found)
 {
-#if 0
     GLFWvidmode *modes;
     int i, modesCount = monitor->drm.modesCount;
 
@@ -365,24 +345,11 @@ GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* found)
 
     *found = modesCount;
     return modes;
-#endif
-    return NULL;
 }
 
 void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
 {
-#if 0
-    int i;
-
-    for (i = 0;  i < monitor->drm.modesCount;  i++)
-    {
-        if (monitor->drm.modes[i].flags & WL_OUTPUT_MODE_CURRENT)
-        {
-            *mode = monitor->drm.modes[i].base;
-            return;
-        }
-    }
-#endif
+    *mode = monitor->drm.current_mode->base;
 }
 
 void _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
