@@ -72,6 +72,11 @@ static void mode(void* data,
     mode.base.refreshRate = refresh;
     mode.flags = flags;
 
+    /* There is nothing in the protocol giving us the real values. */
+    mode.base.redBits = 8;
+    mode.base.greenBits = 8;
+    mode.base.blueBits = 8;
+
     if (monitor->wl.modesCount + 1 >= monitor->wl.modesSize)
     {
         int size = monitor->wl.modesSize * 2;
