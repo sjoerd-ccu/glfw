@@ -307,8 +307,14 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
                                      int* left, int* top,
                                      int* right, int* bottom)
 {
-    // TODO
-    fprintf(stderr, "_glfwPlatformGetWindowFrameSize not implemented yet\n");
+    if (left)
+        *left = 0;
+    if (top)
+        *top = 0;
+    if (right)
+        *right = 0;
+    if (bottom)
+        *bottom = 0;
 }
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)

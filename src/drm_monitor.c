@@ -37,55 +37,6 @@ struct _GLFWvidmodeDRM {
     uint32_t        flags;
 };
 
-#if 0
-static void geometry(void* data,
-                     struct wl_output* output,
-                     int32_t x,
-                     int32_t y,
-                     int32_t physicalWidth,
-                     int32_t physicalHeight,
-                     int32_t subpixel,
-                     const char* make,
-                     const char* model,
-                     int32_t transform)
-{
-    struct _GLFWmonitor *monitor = data;
-
-    monitor->drm.x = x;
-    monitor->drm.y = y;
-    monitor->widthMM = physicalWidth;
-    monitor->heightMM = physicalHeight;
-}
-
-static void mode(void* data,
-                 struct wl_output* output,
-                 uint32_t flags,
-                 int32_t width,
-                 int32_t height,
-                 int32_t refresh)
-{
-    struct _GLFWmonitor *monitor = data;
-    _GLFWvidmodeDRM mode = { { 0 }, };
-
-    mode.base.width = width;
-    mode.base.height = height;
-    mode.base.refreshRate = refresh;
-    mode.flags = flags;
-
-    if (monitor->drm.modesCount + 1 >= monitor->drm.modesSize)
-    {
-        int size = monitor->drm.modesSize * 2;
-        _GLFWvidmodeDRM* modes =
-            realloc(monitor->drm.modes,
-                    size * sizeof(_GLFWvidmodeDRM));
-        monitor->drm.modes = modes;
-        monitor->drm.modesSize = size;
-    }
-
-    monitor->drm.modes[monitor->drm.modesCount++] = mode;
-}
-#endif
-
 struct drm_edid {
     char eisa_id[13];
     char monitor_name[13];
@@ -216,34 +167,29 @@ void _glfwAddOutput(drmModeRes *resources, drmModeConnector *connector)
             }
             drmModeFreePropertyBlob(edid_blob);
         }
-        printf("property: %s %lu\n", property->name, connector->prop_values[i]);
         drmModeFreeProperty(property);
     }
 
-    monitor = _glfwAllocMonitor(name, 0, 0);
-
-    monitor->widthMM = connector->mmWidth;
-    monitor->heightMM = connector->mmHeight;
+    monitor = _glfwAllocMonitor(name, connector->mmWidth, connector->mmHeight);
 
     monitor->drm.modes = calloc(connector->count_modes, sizeof(_GLFWvidmodeDRM));
     monitor->drm.modesSize = connector->count_modes;
     monitor->drm.modesCount = connector->count_modes;
 
-    /* find highest resolution mode: */
     for (i = 0; i < connector->count_modes; i++)
     {
+        _GLFWvidmodeDRM *vidmode = &monitor->drm.modes[i];
         drmModeModeInfo* mode = &connector->modes[i];
-        monitor->drm.modes[i].base.width = mode->hdisplay;
-        monitor->drm.modes[i].base.height = mode->vdisplay;
-        monitor->drm.modes[i].base.refreshRate = mode->vrefresh;
-        monitor->drm.modes[i].flags = mode->flags;
+
+        vidmode->base.width = mode->hdisplay;
+        vidmode->base.height = mode->vdisplay;
+        vidmode->base.refreshRate = mode->vrefresh;
+        vidmode->flags = mode->flags;
 
         /* TODO: Should we retrieve that information from the EDID? */
-        monitor->drm.modes[i].base.redBits = 8;
-        monitor->drm.modes[i].base.greenBits = 8;
-        monitor->drm.modes[i].base.blueBits = 8;
-
-        printf("%d: %d×%d : %d (0x%x, 0x%x)\n", i, mode->hdisplay, mode->vdisplay, mode->vrefresh, mode->flags, mode->type);
+        vidmode->base.redBits = 8;
+        vidmode->base.greenBits = 8;
+        vidmode->base.blueBits = 8;
 
         /* TODO: we should probably retrieve the current mode instead. */
         if (mode->type & DRM_MODE_TYPE_PREFERRED)
@@ -251,22 +197,19 @@ void _glfwAddOutput(drmModeRes *resources, drmModeConnector *connector)
     }
 
     /* find encoder: */
-    for (i = 0; i < resources->count_encoders; i++) {
+    for (i = 0; i < resources->count_encoders; i++)
+    {
         encoder = drmModeGetEncoder(_glfw.drm.modeset_fd, resources->encoders[i]);
-        printf("%d %d\n", encoder->encoder_id, connector->encoder_id);
         if (encoder->encoder_id == connector->encoder_id)
+        {
+            monitor->drm.crtc_id = encoder->crtc_id;
             break;
+        }
         drmModeFreeEncoder(encoder);
         encoder = NULL;
     }
 
-    //if (!encoder) {
-    //    _glfwInputError(GLFW_PLATFORM_ERROR, "DRM: No encoder");
-    //    return;
-    //}
-
-    //_glfw.drm.crtc_id = encoder->crtc_id;
-    //_glfw.drm.connector_id = connector->connector_id;
+    monitor->drm.connector_id = connector->connector_id;
 
     if (_glfw.drm.monitorsCount + 1 >= _glfw.drm.monitorsSize)
     {
@@ -326,7 +269,7 @@ GLFWbool _glfwPlatformIsSameMonitor(_GLFWmonitor* first, _GLFWmonitor* second)
 
 void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos)
 {
-    /* Monitors don’t have a relative position on DRM. */
+    /* Monitors don’t have a virtual position on DRM. */
     if (xpos)
         *xpos = 0;
     if (ypos)
@@ -354,13 +297,17 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
 
 void _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
 {
-    // TODO
-    fprintf(stderr, "_glfwPlatformGetGammaRamp not implemented yet\n");
+#if 0
+    uint32_t crtc_id = 0;
+    drmModeCrtcGetGamma(_glfw.drm.modeset_fd, crtc_id, ramp->size, ramp->red, ramp->green, ramp->blue);
+#endif
 }
 
 void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
 {
-    // TODO
-    fprintf(stderr, "_glfwPlatformSetGammaRamp not implemented yet\n");
+#if 0
+    uint32_t crtc_id = 0;
+    drmModeCrtcSetGamma(_glfw.drm.modeset_fd, crtc_id, ramp->size, ramp->red, ramp->green, ramp->blue);
+#endif
 }
 
