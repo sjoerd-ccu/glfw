@@ -572,20 +572,6 @@ static void registryHandleGlobal(void* data,
             wl_seat_add_listener(_glfw.wl.seat, &seatListener, NULL);
         }
     }
-    else if (strcmp(interface, "zwp_relative_pointer_manager_v1") == 0)
-    {
-        _glfw.wl.relativePointerManager =
-            wl_registry_bind(registry, name,
-                             &zwp_relative_pointer_manager_v1_interface,
-                             1);
-    }
-    else if (strcmp(interface, "zwp_pointer_constraints_v1") == 0)
-    {
-        _glfw.wl.pointerConstraints =
-            wl_registry_bind(registry, name,
-                             &zwp_pointer_constraints_v1_interface,
-                             1);
-    }
 }
 
 static void registryHandleGlobalRemove(void *data,

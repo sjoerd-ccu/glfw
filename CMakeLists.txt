@@ -243,12 +243,8 @@ endif()
 # Use Wayland for window creation
 #--------------------------------------------------------------------
 if (_GLFW_WAYLAND)
-    find_package(ECM REQUIRED NO_MODULE)
-    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
-
-    find_package(Wayland REQUIRED)
-    find_package(WaylandScanner REQUIRED)
-    find_package(WaylandProtocols 1.1 REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(Wayland REQUIRED wayland-client wayland-egl wayland-cursor)
 
     list(APPEND glfw_PKG_DEPS "wayland-egl")
 

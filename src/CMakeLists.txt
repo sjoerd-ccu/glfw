@@ -30,15 +30,6 @@ elseif (_GLFW_WAYLAND)
     set(glfw_SOURCES ${common_SOURCES} wl_init.c wl_monitor.c wl_window.c
                      linux_joystick.c posix_time.c posix_tls.c xkb_unicode.c
                      egl_context.c)
-
-    ecm_add_wayland_client_protocol(glfw_SOURCES
-        PROTOCOL
-        ${WAYLAND_PROTOCOLS_PKGDATADIR}/unstable/relative-pointer/relative-pointer-unstable-v1.xml
-        BASENAME relative-pointer-unstable-v1)
-    ecm_add_wayland_client_protocol(glfw_SOURCES
-        PROTOCOL
-        ${WAYLAND_PROTOCOLS_PKGDATADIR}/unstable/pointer-constraints/pointer-constraints-unstable-v1.xml
-        BASENAME pointer-constraints-unstable-v1)
 elseif (_GLFW_MIR)
     set(glfw_HEADERS ${common_HEADERS} mir_platform.h linux_joystick.h
                      posix_time.h posix_tls.h xkb_unicode.h egl_context.h)
